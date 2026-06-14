@@ -1,0 +1,12 @@
+# PDF to Word Converter
+# Install via: conda activate msa && pip install -r requirements.txt
+
+pymupdf>=1.23.0              # Text extraction from text-based PDFs (fast, preserves bold/italic)
+easyocr>=1.7.0               # OCR fallback for scanned PDFs (PyTorch-based)
+pdf2image>=1.17.0            # PDF page → PIL image for scanned PDFs (requires poppler)
+python-docx>=1.2.0           # Build .docx output
+pillow>=10.0.0               # Image processing
+numpy>=1.24.0                # Array conversion
+
+# poppler must be installed separately via conda:
+#   conda install -c conda-forge poppler
