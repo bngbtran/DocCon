@@ -56,7 +56,8 @@ export default function Home() {
     const form = new FormData()
     form.append('file', file); form.append('lang', lang); form.append('dpi', '300')
     try {
-      const res = await fetch('/convert', { method: 'POST', body: form })
+      const base = import.meta.env.VITE_API_URL ?? ''
+      const res = await fetch(`${base}/convert`, { method: 'POST', body: form })
       if (!res.ok) {
         const j = await res.json().catch(() => null)
         throw new Error(j?.detail ?? `Lỗi máy chủ (HTTP ${res.status})`)
