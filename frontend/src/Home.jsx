@@ -11,21 +11,26 @@ function formatSize(bytes) {
 }
 
 const FEATURES = [
-  'Giữ nguyên font, cỡ chữ, in đậm, in nghiêng',
-  'Nhận diện bố cục 2 cột, đường kẻ, thụt lề',
-  'Hỗ trợ tiếng Việt và tài liệu hành chính',
+  'Giữ nguyên font, cỡ chữ, in đậm, in nghiêng, bảng biểu',
+  'Nhận diện ảnh nhúng, bố cục 2 cột, đường kẻ, thụt lề',
+  'Hỗ trợ tiếng Việt, scan PDF với OCR tự động',
 ]
 
 const PDF_TYPES = [
   {
     ok: true,
-    label: 'PDF văn bản',
-    desc: 'Giữ nguyên 100% định dạng, font, bảng biểu',
+    label: 'PDF văn bản (text PDF)',
+    desc: 'Giữ nguyên toàn bộ định dạng — font, bảng biểu, ảnh nhúng',
   },
   {
-    ok: false,
+    ok: true,
     label: 'PDF scan / ảnh',
-    desc: 'OCR tự động — chất lượng phụ thuộc độ rõ của bản scan',
+    desc: 'OCR tự động nhận diện bố cục, căn lề, tiêu đề, danh sách',
+  },
+  {
+    ok: true,
+    label: 'PDF hỗn hợp (text + scan)',
+    desc: 'Tự động phát hiện từng trang, xử lý đúng phương thức',
   },
 ]
 
@@ -97,7 +102,7 @@ export default function Home() {
           <h1 className="title">Chuyển đổi<br />PDF sang Word</h1>
           <p className="subtitle">
             Chuyển tài liệu PDF sang file Word có thể chỉnh sửa.
-            Tối ưu cho <strong>PDF văn bản</strong> — giữ nguyên toàn bộ định dạng gốc.
+            Hỗ trợ <strong>PDF văn bản</strong>, <strong>PDF scan</strong> và <strong>PDF có ảnh nhúng</strong>.
           </p>
           <ul className="features">
             {FEATURES.map((f, i) => (

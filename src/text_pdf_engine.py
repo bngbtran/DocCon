@@ -39,10 +39,15 @@ class TextPDFEngine:
     def analyze_page(self, page) -> Tuple[List[dict], dict]:
         data = page.get_text("dict")
         raw_blocks = [b for b in data["blocks"] if b["type"] == 0]
+        img_raw    = [b for b in data["blocks"] if b["type"] == 1]
         pw, ph = page.rect.width, page.rect.height
 
-        if not raw_blocks:
+        if not raw_blocks and not img_raw:
             return [], _empty_page_info(pw, ph)
+
+        if not raw_blocks:
+            items = [it for ib in img_raw for it in [_extract_img(page, ib)] if it]
+            return items, _empty_page_info(pw, ph)
 
         left_m, right_edge = self._page_geometry(raw_blocks)
         text_w = right_edge - left_m
@@ -83,7 +88,8 @@ class TextPDFEngine:
                 )
 
         hlines = self._get_hlines(page)
-        items = _merge_by_y(items, hlines)
+        img_items = [it for ib in img_raw for it in [_extract_img(page, ib)] if it]
+        items = _merge_by_y(items + img_items, hlines)
 
         top_m = raw_blocks[0]["bbox"][1]
         actual_bot = ph - raw_blocks[-1]["bbox"][3]
@@ -394,7 +400,28 @@ def _item_y(item: dict) -> float:
         return min(b["block_bbox"][1] for cell in item["cells"] for b in cell)
     elif itype == "hline":
         return item["y"]
-    return 0.0
+    bbox = item.get("block_bbox")
+    return bbox[1] if bbox else 0.0
+
+
+def _extract_img(page, ib: dict) -> Optional[dict]:
+    bbox = list(ib.get("bbox", []))
+    if len(bbox) < 4:
+        return None
+    w, h = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    if w < 30 or h < 30:
+        return None
+    try:
+        import fitz
+        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2), clip=fitz.Rect(bbox))
+        return {
+            "block_label":   "figure",
+            "block_bbox":    bbox,
+            "block_content": "",
+            "figure_bytes":  pix.tobytes("png"),
+        }
+    except Exception:
+        return None
 
 
 def _merge_by_y(items: List[dict], hlines: List[dict]) -> List[dict]:

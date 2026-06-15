@@ -249,7 +249,13 @@ class DocxBuilder:
             elif content:
                 self._plain_para(content, alignment, is_bold, font, size)
         elif label in _FIGURE_LABELS:
-            if bbox and page_image:
+            figure_bytes = block.get("figure_bytes")
+            if figure_bytes:
+                try:
+                    self._plain_image(Image.open(io.BytesIO(figure_bytes)))
+                except Exception:
+                    pass
+            elif bbox and page_image:
                 try:
                     self._plain_image(crop_image(page_image, bbox))
                 except Exception:

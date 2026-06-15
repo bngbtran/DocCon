@@ -154,8 +154,7 @@ body {
   flex-shrink: 0;
 }
 
-.support-dot--ok   { background: #10b981; }
-.support-dot--warn { background: #f59e0b; }
+.support-dot--ok { background: #10b981; }
 
 .support-label {
   font-size: 0.875rem;
