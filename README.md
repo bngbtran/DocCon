@@ -1,3 +1,13 @@
+---
+title: DocCon
+emoji: 📄
+colorFrom: red
+colorTo: red
+sdk: gradio
+app_file: app.py
+pinned: false
+---
+
 # DocCon — PDF to Word Converter
 
 Chuyển đổi file PDF sang Word (.docx) với độ chính xác cao, giữ nguyên định dạng gốc.  
