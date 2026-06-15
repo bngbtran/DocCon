@@ -102,7 +102,7 @@ class LayoutOCR:
         all_x1 = [l["x1"] for l in lines]
         left_margin = float(np.percentile(all_x1, 10))
         page_cx = img_w / 2
-        indent_thresh = avg_h * 0.7
+        indent_thresh = avg_h * 2.5
 
         blocks: List[dict] = []
         for para in para_groups:
