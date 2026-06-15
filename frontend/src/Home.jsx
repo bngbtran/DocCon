@@ -23,11 +23,11 @@ const PDF_TYPES = [
   },
   {
     label: 'PDF scan / ảnh',
-    desc: 'OCR tự động, nhận diện bố cục',
+    desc: 'OCR tự động, người dùng cần chỉnh sửa lại font, bảng biểu, ảnh nhúng',
   },
   {
     label: 'PDF hỗn hợp',
-    desc: 'Phát hiện từng trang, xử lý đúng phương thức',
+    desc: 'Phát hiện từng trang, người dùng cần tinh chỉnh lại font, bảng biểu, ảnh nhúng',
   },
 ]
 
@@ -95,7 +95,6 @@ export default function Home() {
       <div className="container">
 
         <div className="left">
-          <p className="eyebrow">Công cụ miễn phí</p>
           <h1 className="title">Chuyển đổi<br />PDF sang Word</h1>
           <p className="subtitle">
             Chuyển tài liệu PDF sang file Word có thể chỉnh sửa.
