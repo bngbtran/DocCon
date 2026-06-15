@@ -16,6 +16,19 @@ const FEATURES = [
   'Hỗ trợ tiếng Việt và tài liệu hành chính',
 ]
 
+const PDF_TYPES = [
+  {
+    ok: true,
+    label: 'PDF văn bản',
+    desc: 'Giữ nguyên 100% định dạng, font, bảng biểu',
+  },
+  {
+    ok: false,
+    label: 'PDF scan / ảnh',
+    desc: 'OCR tự động — chất lượng phụ thuộc độ rõ của bản scan',
+  },
+]
+
 export default function Home() {
   const [file, setFile]         = useState(null)
   const [lang, setLang]         = useState('vi')
@@ -80,10 +93,11 @@ export default function Home() {
       <div className="container">
 
         <div className="left">
+          <p className="eyebrow">Công cụ miễn phí</p>
           <h1 className="title">Chuyển đổi<br />PDF sang Word</h1>
           <p className="subtitle">
-            Dễ dàng chuyển đổi tài liệu PDF sang file Word có thể chỉnh sửa,
-            giữ nguyên định dạng gốc.
+            Chuyển tài liệu PDF sang file Word có thể chỉnh sửa.
+            Tối ưu cho <strong>PDF văn bản</strong> — giữ nguyên toàn bộ định dạng gốc.
           </p>
           <ul className="features">
             {FEATURES.map((f, i) => (
@@ -99,6 +113,19 @@ export default function Home() {
               </li>
             ))}
           </ul>
+
+          <div className="support-block">
+            <p className="support-heading">Mức hỗ trợ theo loại PDF</p>
+            {PDF_TYPES.map(({ ok, label, desc }) => (
+              <div key={label} className="support-item">
+                <span className={`support-dot ${ok ? 'support-dot--ok' : 'support-dot--warn'}`} />
+                <div>
+                  <p className="support-label">{label}</p>
+                  <p className="support-desc">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
 
         <div className="right">

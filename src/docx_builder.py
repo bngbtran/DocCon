@@ -228,20 +228,26 @@ class DocxBuilder:
         bbox = block.get("block_bbox", [])
         alignment = block.get("block_alignment", "left")
         is_bold = block.get("block_bold", False)
+        font = block.get("block_font", "Times New Roman")
+        size = block.get("block_size", 13)
 
         if label in _HEADING_LABELS:
             if content:
                 p = self.doc.add_heading(content, level=_HEADING_LABELS[label])
                 p.alignment = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.CENTER)
+                for run in p.runs:
+                    run.font.name = font
+                    run.font.size = Pt(size)
+                    run.bold = is_bold
         elif label == "section_title":
             if content:
-                self._plain_para(content, alignment, is_bold)
+                self._plain_para(content, alignment, is_bold, font, size)
         elif label == "table":
             rows = html_to_table(content)
             if rows:
                 self._plain_table(rows)
             elif content:
-                self._plain_para(content, alignment, is_bold)
+                self._plain_para(content, alignment, is_bold, font, size)
         elif label in _FIGURE_LABELS:
             if bbox and page_image:
                 try:
@@ -250,24 +256,29 @@ class DocxBuilder:
                     pass
         elif label in {"list", "list_item"}:
             if content:
-                self._plain_bullet(content)
+                self._plain_bullet(content, font, size)
         elif label == "formula":
             if content:
                 self._plain_formula(content)
         else:
             if content:
-                self._plain_para(content, alignment, is_bold)
+                self._plain_para(content, alignment, is_bold, font, size)
 
-    def _plain_para(self, text: str, alignment: str = "left", bold: bool = False):
+    def _plain_para(self, text: str, alignment: str = "left", bold: bool = False,
+                    font: str = "Times New Roman", size: int = 13):
         para = self.doc.add_paragraph()
         para.style = self.doc.styles["Normal"]
         para.paragraph_format.alignment = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
         run = para.add_run(text)
+        run.font.name = font
+        run.font.size = Pt(size)
         run.bold = bold
 
-    def _plain_bullet(self, text: str):
+    def _plain_bullet(self, text: str, font: str = "Times New Roman", size: int = 13):
         para = self.doc.add_paragraph(style="List Bullet")
-        para.add_run(text)
+        run = para.add_run(text)
+        run.font.name = font
+        run.font.size = Pt(size)
 
     def _plain_formula(self, text: str):
         para = self.doc.add_paragraph()

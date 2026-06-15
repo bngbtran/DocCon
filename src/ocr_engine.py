@@ -111,6 +111,15 @@ class LayoutOCR:
             alignment = para[0]["alignment"]
             is_bold   = any(l["bold"] for l in para)
 
+            max_h = max(l["h"] for l in para)
+            h_ratio = max_h / avg_h
+            if h_ratio > 1.35:
+                font_size = 16
+            elif h_ratio > 1.12:
+                font_size = 14
+            else:
+                font_size = 13
+
             if alignment == "center":
                 label = "title" if is_bold else "section_title"
             elif _NUMBERED.match(para[0]["text"]):
@@ -124,6 +133,8 @@ class LayoutOCR:
                 "block_content":   text,
                 "block_alignment": alignment,
                 "block_bold":      is_bold,
+                "block_font":      "Times New Roman",
+                "block_size":      font_size,
             })
 
         return blocks
