@@ -18,19 +18,16 @@ const FEATURES = [
 
 const PDF_TYPES = [
   {
-    ok: true,
-    label: 'PDF văn bản (text PDF)',
-    desc: 'Giữ nguyên toàn bộ định dạng — font, bảng biểu, ảnh nhúng',
+    label: 'PDF văn bản',
+    desc: 'Giữ nguyên font, bảng biểu, ảnh nhúng',
   },
   {
-    ok: true,
     label: 'PDF scan / ảnh',
-    desc: 'OCR tự động nhận diện bố cục, căn lề, tiêu đề, danh sách',
+    desc: 'OCR tự động, nhận diện bố cục',
   },
   {
-    ok: true,
-    label: 'PDF hỗn hợp (text + scan)',
-    desc: 'Tự động phát hiện từng trang, xử lý đúng phương thức',
+    label: 'PDF hỗn hợp',
+    desc: 'Phát hiện từng trang, xử lý đúng phương thức',
   },
 ]
 
@@ -120,16 +117,22 @@ export default function Home() {
           </ul>
 
           <div className="support-block">
-            <p className="support-heading">Mức hỗ trợ theo loại PDF</p>
-            {PDF_TYPES.map(({ ok, label, desc }) => (
-              <div key={label} className="support-item">
-                <span className={`support-dot ${ok ? 'support-dot--ok' : 'support-dot--warn'}`} />
-                <div>
-                  <p className="support-label">{label}</p>
-                  <p className="support-desc">{desc}</p>
+            <p className="support-heading">Hỗ trợ tất cả loại PDF</p>
+            <div className="support-grid">
+              {PDF_TYPES.map(({ label, desc }) => (
+                <div key={label} className="support-card">
+                  <svg className="support-check" viewBox="0 0 20 20" fill="none" width="17" height="17">
+                    <circle cx="10" cy="10" r="10" fill="#10b981" />
+                    <path d="M6 10l3 3 5-5" stroke="#fff" strokeWidth="1.8"
+                      strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  <div>
+                    <p className="support-label">{label}</p>
+                    <p className="support-desc">{desc}</p>
+                  </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
 
