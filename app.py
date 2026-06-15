@@ -6,4 +6,4 @@ with gr.Blocks(title="DocCon API") as demo:
     gr.Markdown("## DocCon — PDF to Word")
     gr.Markdown("Gửi `POST /convert` kèm file PDF để chuyển đổi sang Word.")
 
-app = gr.mount_gradio_app(fastapi_app, demo, path="/ui")
+app = gr.mount_gradio_app(fastapi_app, demo, path="/")
