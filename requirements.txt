@@ -8,5 +8,10 @@ python-docx>=1.2.0           # Build .docx output
 pillow>=10.0.0               # Image processing
 numpy>=1.24.0                # Array conversion
 
+# Web API (for React frontend)
+fastapi>=0.111.0
+uvicorn[standard]>=0.29.0
+python-multipart>=0.0.9
+
 # poppler must be installed separately via conda:
 #   conda install -c conda-forge poppler
