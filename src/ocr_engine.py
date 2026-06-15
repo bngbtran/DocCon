@@ -2,7 +2,6 @@ import numpy as np
 from PIL import Image
 from typing import List
 
-# PaddleOCR language codes → EasyOCR language codes
 _LANG_MAP = {
     "vi": ["vi", "en"],
     "en": ["en"],
@@ -18,8 +17,6 @@ _LANG_MAP = {
 
 
 class LayoutOCR:
-    """EasyOCR-based layout analysis with two-pass grouping."""
-
     def __init__(self, lang: str = "vi", **_):
         import easyocr
         langs = _LANG_MAP.get(lang, ["en"])
@@ -30,14 +27,9 @@ class LayoutOCR:
         raw = self.reader.readtext(img_array, detail=1, paragraph=False)
         return self._to_blocks(raw, img_array.shape)
 
-    # ------------------------------------------------------------------
-    # Internals
-    # ------------------------------------------------------------------
-
     def _to_blocks(self, raw, img_shape) -> List[dict]:
         img_h, img_w = img_shape[:2]
 
-        # Parse raw detections
         items = []
         for entry in raw:
             bbox, text = entry[0], entry[1]
@@ -59,8 +51,6 @@ class LayoutOCR:
 
         avg_h = float(np.median([i["h"] for i in items]))
 
-        # --- Pass 1: cluster items onto the same visual text line --------
-        # Items sharing a text row have very similar y-centers.
         items.sort(key=lambda i: (i["yc"], i["x1"]))
         rows: List[List[dict]] = []
         cur_row: List[dict] = [items[0]]
@@ -72,7 +62,6 @@ class LayoutOCR:
                 cur_row = [item]
         rows.append(sorted(cur_row, key=lambda i: i["x1"]))
 
-        # Build line-level metadata
         lines = []
         for row in rows:
             x1 = min(i["x1"] for i in row)
@@ -86,11 +75,7 @@ class LayoutOCR:
                 "text": text.strip(),
             })
 
-        # --- Pass 2: group lines into paragraphs -------------------------
-        # Within one paragraph lines are dense (overlapping or very close).
-        # A new paragraph starts when the gap exceeds ~40% of avg line height.
         PARA_GAP = max(20, avg_h * 0.4)
-
         para_groups: List[List[dict]] = []
         cur_para: List[dict] = [lines[0]]
         for line in lines[1:]:
@@ -102,12 +87,10 @@ class LayoutOCR:
                 cur_para.append(line)
         para_groups.append(cur_para)
 
-        # --- Pass 3: classify and emit blocks ----------------------------
-        # Compute page geometry from all line starts
         all_x1 = [l["x1"] for l in lines]
         left_margin = float(np.percentile(all_x1, 10))
         page_cx = img_w / 2
-        indent_thresh = avg_h * 0.7     # px offset from left margin → bullet
+        indent_thresh = avg_h * 0.7
 
         blocks: List[dict] = []
         for para in para_groups:
@@ -122,7 +105,6 @@ class LayoutOCR:
             first_x1 = para[0]["x1"]
             para_cx = (x1 + x2) / 2
             para_w = x2 - x1
-            # True centering: center near page middle AND block is narrow (< 45% page width)
             is_centered = (abs(para_cx - page_cx) < img_w * 0.08
                            and para_w < img_w * 0.45)
 

@@ -79,7 +79,6 @@ export default function Home() {
     <main className="main">
       <div className="container">
 
-        {/* Left — description */}
         <div className="left">
           <h1 className="title">Chuyển đổi<br />PDF sang Word</h1>
           <p className="subtitle">
@@ -102,7 +101,6 @@ export default function Home() {
           </ul>
         </div>
 
-        {/* Right — upload card */}
         <div className="right">
           <div className="card">
 

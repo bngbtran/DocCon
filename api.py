@@ -1,4 +1,3 @@
-"""FastAPI server — wraps the PDF→Word conversion logic as an HTTP endpoint."""
 import asyncio
 import os
 import tempfile
@@ -36,30 +35,28 @@ async def convert_endpoint(
         raise HTTPException(status_code=400, detail="Chỉ hỗ trợ file PDF.")
 
     pdf_bytes = await file.read()
-    if len(pdf_bytes) == 0:
+    if not pdf_bytes:
         raise HTTPException(status_code=400, detail="File rỗng.")
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        in_path  = os.path.join(tmpdir, "input.pdf")
+        in_path = os.path.join(tmpdir, "input.pdf")
         out_path = os.path.join(tmpdir, "output.docx")
 
         with open(in_path, "wb") as f:
             f.write(pdf_bytes)
 
-        loop = asyncio.get_event_loop()
         try:
-            await loop.run_in_executor(
+            await asyncio.get_running_loop().run_in_executor(
                 None, _run_convert, in_path, out_path, lang, dpi
             )
         except Exception as exc:
             raise HTTPException(status_code=500, detail=str(exc))
 
-        with open(out_path, "rb") as f:
-            docx_bytes = f.read()
+        docx_bytes = Path(out_path).read_bytes()
 
     stem = Path(file.filename).stem
     out_name = f"{stem}.docx"
-    encoded  = quote(out_name, safe="")
+    encoded = quote(out_name, safe="")
 
     return Response(
         content=docx_bytes,
@@ -69,7 +66,7 @@ async def convert_endpoint(
         ),
         headers={
             "Content-Disposition": (
-                f"attachment; filename=\"{out_name}\"; "
+                f'attachment; filename="{out_name}"; '
                 f"filename*=UTF-8''{encoded}"
             )
         },

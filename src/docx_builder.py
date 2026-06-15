@@ -1,13 +1,3 @@
-"""
-Builds a .docx from structured blocks/items.
-
-Item types from TextPDFEngine:
-  {"item_type": "paragraph",  ...rich block...}
-  {"item_type": "columns",    "cells": List[List[dict]], ...}
-  {"item_type": "hline",      "y", "x1", "x2", "thickness_pt"}
-
-Plain OCR blocks (LayoutOCR) have block_label + block_content only.
-"""
 import io
 from typing import List, Optional
 
@@ -42,8 +32,6 @@ class DocxBuilder:
         for p in self.doc.paragraphs:
             p._element.getparent().remove(p._element)
 
-    # ── Public API ────────────────────────────────────────────────────────────
-
     def set_page_margins(self, page_info: dict):
         if self._margins_set:
             return
@@ -76,10 +64,7 @@ class DocxBuilder:
     def save(self, output_path: str):
         self.doc.save(output_path)
 
-    # ── Rich paragraph ────────────────────────────────────────────────────────
-
     def _render_rich(self, block: dict, para=None):
-        """Render a rich (TextPDFEngine) block into self.doc."""
         spans          = block.get("block_spans", [])
         alignment      = block.get("alignment", "left")
         has_bullet     = block.get("has_bullet", False)
@@ -109,16 +94,7 @@ class DocxBuilder:
 
         _apply_spans(para, spans)
 
-    # ── Multi-column block ────────────────────────────────────────────────────
-
     def _render_columns(self, item: dict):
-        """Render side-by-side column-cells as a borderless Word table.
-
-        Column widths are derived from midpoints between adjacent cell bboxes,
-        anchored at the page text area boundaries — so each column gets the
-        space it occupies on the page (including inter-column gaps), not just
-        the tight bbox of its content.
-        """
         cells_data: List[List[dict]] = item.get("cells", [])
         n = len(cells_data)
         if n == 0:
@@ -128,17 +104,13 @@ class DocxBuilder:
         left_m  = item.get("left_margin_pt", 72.0)
         right_m = item.get("right_margin_pt", 72.0)
         left_edge  = left_m
-        right_edge = page_w - right_m          # nominal right boundary
+        right_edge = page_w - right_m
 
-        # Gather x-ranges per cell
         cell_x1s = [min(b["block_bbox"][0] for b in cell) for cell in cells_data]
         cell_x2s = [max(b["block_bbox"][2] for b in cell) for cell in cells_data]
 
-        # Allow table to extend to actual content right edge (PDFs sometimes let
-        # headings bleed slightly into the margin — honour that in Word too)
         actual_right = max(cell_x2s[-1], right_edge)
 
-        # Column boundaries: left edge → midpoints between adjacent cells → actual right
         boundaries = [left_edge]
         for i in range(n - 1):
             mid = (cell_x2s[i] + cell_x1s[i + 1]) / 2.0
@@ -147,16 +119,13 @@ class DocxBuilder:
 
         col_w_pts = [max(1.0, boundaries[i + 1] - boundaries[i]) for i in range(n)]
 
-        # Build table
         table = self.doc.add_table(rows=1, cols=n)
         table.style = "Table Grid"
 
-        # Fixed layout + actual content width + no borders
         table_w_twips = int((actual_right - left_edge) * 20)
-        tbl  = table._tbl
+        tbl   = table._tbl
         tblPr = _get_or_add(tbl, "w:tblPr")
-        _set_child(tblPr, "w:tblW",
-                   {"w:w": str(table_w_twips), "w:type": "dxa"})
+        _set_child(tblPr, "w:tblW", {"w:w": str(table_w_twips), "w:type": "dxa"})
         _set_child(tblPr, "w:tblLayout", {"w:type": "fixed"})
         _clear_borders(tblPr)
 
@@ -166,39 +135,25 @@ class DocxBuilder:
             tc   = word_cell._tc
             tcPr = _get_or_add(tc, "w:tcPr")
 
-            # Cell width
-            _set_child(tcPr, "w:tcW",
-                       {"w:w": str(col_w_twips), "w:type": "dxa"})
+            _set_child(tcPr, "w:tcW", {"w:w": str(col_w_twips), "w:type": "dxa"})
 
-            # Zero cell margins (maximise usable width)
             tcMar = _get_or_add(tcPr, "w:tcMar")
             for side in ("top", "left", "bottom", "right"):
-                _set_child(tcMar, f"w:{side}",
-                           {"w:w": "0", "w:type": "dxa"})
+                _set_child(tcMar, f"w:{side}", {"w:w": "0", "w:type": "dxa"})
 
-            # Clear default empty paragraph Word inserts
             for p in word_cell.paragraphs:
                 p._element.getparent().remove(p._element)
 
-            # Compute this cell's X bounds for alignment detection
             cell_bx1 = boundaries[ci]
             cell_bx2 = boundaries[ci + 1]
 
             for block in cell_blocks:
-                align = _cell_alignment(block, cell_bx1, cell_bx2)
-                # Merge override alignment into a copy of the block
                 b = dict(block)
-                b["alignment"] = align
+                b["alignment"] = _cell_alignment(block, cell_bx1, cell_bx2)
                 b["space_after_pt"] = block.get("space_after_pt", 4.0)
                 self._render_rich_in(b, word_cell)
 
     def _render_rich_in(self, block: dict, cell):
-        """Write a rich block into a table cell.
-
-        If the block has multiple PDF lines (block_lines), each line becomes its
-        own paragraph so intentional line breaks (e.g. underscores + date) are
-        preserved exactly as in the PDF.  Single-line blocks work as before.
-        """
         alignment      = block.get("alignment", "left")
         has_bullet     = block.get("has_bullet", False)
         indent_left    = block.get("indent_left_pt", 0.0)
@@ -209,7 +164,6 @@ class DocxBuilder:
         wd_align = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
 
         if len(block_lines) > 1:
-            # Multi-line: one paragraph per PDF line
             for li, line_spans in enumerate(block_lines):
                 is_last = (li == len(block_lines) - 1)
                 para = cell.add_paragraph()
@@ -219,7 +173,6 @@ class DocxBuilder:
                 pf.space_after  = Pt(space_after if is_last else 2.0)
                 _apply_spans(para, line_spans)
         else:
-            # Single paragraph
             spans = block.get("block_spans", [])
             para = cell.add_paragraph()
             pf   = para.paragraph_format
@@ -241,10 +194,7 @@ class DocxBuilder:
 
             _apply_spans(para, spans)
 
-    # ── Horizontal rule ───────────────────────────────────────────────────────
-
     def _render_hline(self, item: dict):
-        """Empty paragraph with a bottom border."""
         para = self.doc.add_paragraph()
         para.paragraph_format.space_before = Pt(0)
         para.paragraph_format.space_after  = Pt(0)
@@ -257,8 +207,6 @@ class DocxBuilder:
         bottom.set(qn("w:color"), "000000")
         pBdr.append(bottom)
         pPr.append(pBdr)
-
-    # ── Plain renderer (EasyOCR) ──────────────────────────────────────────────
 
     def _render_plain(self, block: dict, page_image: Optional[Image.Image]):
         label   = block.get("block_label", "text").lower()
@@ -326,8 +274,6 @@ class DocxBuilder:
                             for run in p.runs:
                                 run.font.bold = True
 
-    # ── XML helper ───────────────────────────────────────────────────────────
-
     @staticmethod
     def _set_tab_stop(para, pos_pt: float):
         pPr  = para._p.get_or_add_pPr()
@@ -338,8 +284,6 @@ class DocxBuilder:
         tabs.append(tab)
         pPr.append(tabs)
 
-
-# ── Module-level helpers ─────────────────────────────────────────────────────
 
 def _apply_spans(para, spans: List[dict]):
     for span in spans:
@@ -358,28 +302,22 @@ def _apply_spans(para, spans: List[dict]):
 
 
 def _cell_alignment(block: dict, cell_x1: float, cell_x2: float) -> str:
-    """Determine paragraph alignment relative to the column cell, not the full page."""
     bbox = block.get("block_bbox", [])
     if len(bbox) < 4:
         return block.get("alignment", "left")
     bx1, bx2 = bbox[0], bbox[2]
-    bcx      = (bx1 + bx2) / 2.0
-    cell_cx  = (cell_x1 + cell_x2) / 2.0
-    cell_w   = max(1.0, cell_x2 - cell_x1)
+    bcx     = (bx1 + bx2) / 2.0
+    cell_cx = (cell_x1 + cell_x2) / 2.0
+    cell_w  = max(1.0, cell_x2 - cell_x1)
 
-    # Centered: block center within 10% of cell center
     if abs(bcx - cell_cx) / cell_w < 0.10:
         return "center"
-
-    # Right: block's right edge close to cell's right edge and left edge past midpoint
     if (bx2 >= cell_x2 - cell_w * 0.12) and (bx1 > cell_cx):
         return "right"
-
     return block.get("alignment", "justify")
 
 
 def _get_or_add(parent, tag: str):
-    """Get first child with tag or create it."""
     ns_tag = qn(tag)
     el = parent.find(ns_tag)
     if el is None:
@@ -389,7 +327,6 @@ def _get_or_add(parent, tag: str):
 
 
 def _set_child(parent, tag: str, attrs: dict):
-    """Remove existing child with tag, create new one with attrs."""
     ns_tag = qn(tag)
     existing = parent.find(ns_tag)
     if existing is not None:
@@ -402,7 +339,6 @@ def _set_child(parent, tag: str, attrs: dict):
 
 
 def _clear_borders(tblPr):
-    """Add/replace tblBorders element to set all borders to 'none'."""
     ns_tag = qn("w:tblBorders")
     existing = tblPr.find(ns_tag)
     if existing is not None:

@@ -12,6 +12,8 @@ pinned: false
 Chuyển đổi file PDF sang Word (.docx) với độ chính xác cao, giữ nguyên định dạng gốc.  
 Hỗ trợ cả PDF văn bản thông thường lẫn PDF scan (ảnh chụp).
 
+**Live:** [tranbnb-doccon.vercel.app](https://tranbnb-doccon.vercel.app)
+
 ---
 
 ## Tính năng
@@ -24,11 +26,21 @@ Hỗ trợ cả PDF văn bản thông thường lẫn PDF scan (ảnh chụp).
 
 ---
 
+## Triển khai
+
+| Thành phần | Nền tảng | URL |
+|-----------|----------|-----|
+| Frontend | Vercel | [tranbnb-doccon.vercel.app](https://tranbnb-doccon.vercel.app) |
+| Backend | Hugging Face Spaces (Docker) | [bngbtran-doccon.hf.space](https://bngbtran-doccon.hf.space) |
+
+---
+
 ## Cấu trúc dự án
 
 ```
 DocCon/
 ├── api.py                  # FastAPI server
+├── Dockerfile              # HF Spaces Docker entry point
 ├── requirements.txt
 ├── src/
 │   ├── text_pdf_engine.py  # Phân tích PDF văn bản (PyMuPDF)
@@ -49,27 +61,22 @@ DocCon/
 
 ---
 
-## Cài đặt
+## Chạy local
 
 ### Yêu cầu
 
-- Python 3.10+
-- Conda (khuyến nghị)
+- Python 3.10+, Conda
 - Node.js 18+
-- Poppler (cho pdf2image)
+- Poppler
 
 ### Backend
 
 ```bash
-# Tạo môi trường conda
-conda create -n msa python=3.10
-conda activate msa
-
-# Cài poppler
+conda create -n doccon python=3.10
+conda activate doccon
 conda install -c conda-forge poppler
-
-# Cài dependencies Python
 pip install -r requirements.txt
+uvicorn api:app --host 0.0.0.0 --port 8000
 ```
 
 ### Frontend
@@ -77,21 +84,6 @@ pip install -r requirements.txt
 ```bash
 cd frontend
 npm install
-```
-
----
-
-## Chạy ứng dụng
-
-**Terminal 1 — Backend:**
-```bash
-conda activate msa
-uvicorn api:app --host 0.0.0.0 --port 8000
-```
-
-**Terminal 2 — Frontend:**
-```bash
-cd frontend
 npm run dev
 ```
 
@@ -102,8 +94,6 @@ Truy cập: [http://localhost:5173](http://localhost:5173)
 ## API
 
 ### `POST /convert`
-
-Chuyển đổi file PDF sang Word.
 
 | Tham số | Kiểu | Mô tả |
 |---------|------|-------|

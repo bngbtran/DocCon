@@ -1,11 +1,4 @@
-"""PyMuPDF-based extractor for text-based PDFs.
-
-Returns a flat list of "items" per page:
-  {"item_type": "paragraph", ...block...}
-  {"item_type": "columns",   "cols": [block, ...], ...}
-  {"item_type": "hline",     "y", "x1", "x2", "thickness_pt"}
-"""
-from typing import List, Tuple, Optional, Dict, Any
+from typing import List, Tuple, Optional
 import numpy as np
 
 _FONT_MAP = {
@@ -38,8 +31,6 @@ def _word_font(pdf_name: str) -> str:
 
 
 class TextPDFEngine:
-    """Extract layout blocks with full formatting from a text-based PDF page."""
-
     def analyze_page(self, page) -> Tuple[List[dict], dict]:
         data = page.get_text("dict")
         raw_blocks = [b for b in data["blocks"] if b["type"] == 0]
@@ -57,21 +48,18 @@ class TextPDFEngine:
                 if b2["bbox"][1] - b1["bbox"][3] > 0]
         space_after = float(np.median(gaps)) if gaps else 14.0
 
-        # Process individual raw blocks → blocks with full formatting
         blocks: List[dict] = []
         for raw in raw_blocks:
             b = self._process_block(raw, pw, left_m, text_w, body_size, space_after)
             if b:
                 blocks.append(b)
 
-        # Group side-by-side blocks into rows, then split each row into X-cells
         rows = self._group_rows(blocks)
 
         items: List[dict] = []
         for row in rows:
-            cells = self._split_into_cells(row)   # List[List[dict]]
+            cells = self._split_into_cells(row)
             if len(cells) == 1:
-                # Single column — emit each block as a paragraph
                 for b in cells[0]:
                     bb = dict(b)
                     bb["item_type"] = "paragraph"
@@ -79,13 +67,12 @@ class TextPDFEngine:
             else:
                 items.append({
                     "item_type":       "columns",
-                    "cells":           cells,      # List[List[dict]]
+                    "cells":           cells,
                     "page_width_pt":   pw,
                     "left_margin_pt":  left_m,
                     "right_margin_pt": pw - right_edge,
                 })
 
-        # Interleave horizontal lines from PDF drawings
         hlines = self._get_hlines(page)
         items = _merge_by_y(items, hlines)
 
@@ -103,8 +90,6 @@ class TextPDFEngine:
         }
         return items, page_info
 
-    # ── Block processing ───────────────────────────────────────────────
-
     def _process_block(self, raw, pw, left_m, text_w, body_size, space_after) -> Optional[dict]:
         spans_out, has_bullet, content_x = self._flatten(raw, left_m)
         if not spans_out:
@@ -117,7 +102,6 @@ class TextPDFEngine:
         bbox = list(raw["bbox"])
         max_size = max(s["size"] for s in spans_out)
 
-        # ── Alignment ────────────────────────────────────────────
         bx1, bx2 = bbox[0], bbox[2]
         bcx = (bx1 + bx2) / 2
         block_w = bx2 - bx1
@@ -135,10 +119,8 @@ class TextPDFEngine:
         elif has_full_lines or len(raw["lines"]) > 1:
             alignment = "justify"
         else:
-            alignment = "justify"   # single-line → let justify handle it naturally
+            alignment = "justify"
 
-        # ── First-line paragraph indent ──────────────────────────
-        # Detect "    Điều 1. …" style: first line more indented than rest
         indent_first_line = 0.0
         if not has_bullet and len(raw["lines"]) >= 2:
             def _min_x(spans):
@@ -151,10 +133,9 @@ class TextPDFEngine:
             if first_x and rest_xs:
                 rest_x = float(np.median(rest_xs))
                 diff = first_x - rest_x
-                if diff > 6:           # first line genuinely more indented
+                if diff > 6:
                     indent_first_line = diff
 
-        # ── Label ────────────────────────────────────────────────
         if max_size >= body_size * 1.15:
             label = "title" if max_size >= body_size * 1.4 else "section_title"
         elif has_bullet:
@@ -162,7 +143,7 @@ class TextPDFEngine:
         else:
             label = "text"
 
-        indent_left   = content_x - left_m if has_bullet else 0.0
+        indent_left = content_x - left_m if has_bullet else 0.0
         indent_hanging = indent_left
 
         return {
@@ -179,10 +160,7 @@ class TextPDFEngine:
             "space_after_pt":       space_after,
         }
 
-    # ── Row grouping (side-by-side block detection) ───────────────────
-
     def _group_rows(self, blocks: List[dict]) -> List[List[dict]]:
-        """Group blocks that overlap significantly in Y into the same row."""
         if not blocks:
             return []
 
@@ -207,35 +185,22 @@ class TextPDFEngine:
         rows.append(sorted(current, key=lambda b: b["block_bbox"][0]))
         return rows
 
-    # ── X-cell splitting (within a multi-block row) ──────────────────
-
     def _split_into_cells(self, row: List[dict]) -> List[List[dict]]:
-        """
-        Given a Y-overlapping row of blocks, cluster them by X position into
-        column-cells.  Blocks whose X ranges significantly overlap are stacked
-        into the same cell (same column).
-
-        Returns List[List[dict]] — one inner list per distinct column-cell,
-        ordered left-to-right; each inner list is ordered top-to-bottom.
-        """
         if len(row) <= 1:
             return [row]
 
-        # Sort left-to-right by x1
         sorted_row = sorted(row, key=lambda b: b["block_bbox"][0])
-
         cells: List[List[dict]] = [[sorted_row[0]]]
 
         for block in sorted_row[1:]:
             bx1, bx2 = block["block_bbox"][0], block["block_bbox"][2]
             bw = max(1.0, bx2 - bx1)
             merged = False
-            # Try to add to an existing cell whose X range overlaps with this block
             for cell in cells:
                 cell_x1 = min(b["block_bbox"][0] for b in cell)
                 cell_x2 = max(b["block_bbox"][2] for b in cell)
                 overlap = max(0.0, min(bx2, cell_x2) - max(bx1, cell_x1))
-                cell_w  = max(1.0, cell_x2 - cell_x1)
+                cell_w = max(1.0, cell_x2 - cell_x1)
                 if overlap / min(bw, cell_w) > 0.3:
                     cell.append(block)
                     merged = True
@@ -243,15 +208,11 @@ class TextPDFEngine:
             if not merged:
                 cells.append([block])
 
-        # Sort blocks within each cell top-to-bottom
         for cell in cells:
             cell.sort(key=lambda b: b["block_bbox"][1])
 
-        # Sort cells left-to-right by leftmost x
         cells.sort(key=lambda cell: min(b["block_bbox"][0] for b in cell))
         return cells
-
-    # ── Span flattening ───────────────────────────────────────────────
 
     def _flatten(self, block_raw, left_m) -> Tuple[List[dict], bool, float]:
         has_bullet = False
@@ -285,12 +246,11 @@ class TextPDFEngine:
                 continue
             if all_spans:
                 prev = all_spans[-1]["text"]
-                nxt  = line_spans[0]["text"]
+                nxt = line_spans[0]["text"]
                 if prev and not prev[-1].isspace() and nxt and not nxt[0].isspace():
                     all_spans[-1] = {**all_spans[-1], "text": prev + " "}
             all_spans.extend(line_spans)
 
-        # Merge adjacent same-style spans
         merged: List[dict] = []
         for s in all_spans:
             if (merged
@@ -306,8 +266,6 @@ class TextPDFEngine:
         return merged, has_bullet, content_x
 
     def _flatten_lines(self, block_raw, left_m) -> List[List[dict]]:
-        """Like _flatten but preserves PDF line structure — one inner list per line.
-        Used for multi-column cells so each PDF line becomes its own paragraph."""
         lines_out: List[List[dict]] = []
         for line in block_raw["lines"]:
             line_spans: List[dict] = []
@@ -331,7 +289,6 @@ class TextPDFEngine:
                 })
             if not line_spans:
                 continue
-            # Merge adjacent same-style spans within the line
             merged: List[dict] = []
             for sp in line_spans:
                 if (merged
@@ -346,8 +303,6 @@ class TextPDFEngine:
             if any(sp["text"].strip() for sp in merged):
                 lines_out.append(merged)
         return lines_out
-
-    # ── Horizontal line detection ─────────────────────────────────────
 
     def _get_hlines(self, page) -> List[dict]:
         pw = page.rect.width
@@ -371,8 +326,6 @@ class TextPDFEngine:
             pass
         return sorted(hlines, key=lambda l: l["y"])
 
-    # ── Helpers ───────────────────────────────────────────────────────
-
     def _page_geometry(self, raw_blocks) -> Tuple[float, float]:
         x1s, x2s = [], []
         for b in raw_blocks:
@@ -395,8 +348,6 @@ class TextPDFEngine:
                         sizes.append(s["size"])
         return float(np.median(sizes)) if sizes else 12.0
 
-
-# ── Module-level helpers ─────────────────────────────────────────────────────
 
 def _empty_page_info(pw, ph) -> dict:
     return {

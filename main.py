@@ -1,15 +1,3 @@
-"""
-PDF → Word converter.
-
-Auto-detects whether the PDF has embedded text (fast, preserves bold/italic)
-or is a scanned image (falls back to EasyOCR).
-
-Usage:
-    conda activate msa
-    python main.py input.pdf
-    python main.py input.pdf -o output.docx --lang vi --dpi 300
-"""
-
 import argparse
 import sys
 import time
@@ -17,7 +5,6 @@ from pathlib import Path
 
 
 def _has_text(pdf_path: str, sample_pages: int = 3, min_chars: int = 50) -> bool:
-    """Return True if the PDF has a meaningful embedded text layer."""
     import fitz
     doc = fitz.open(pdf_path)
     total = 0
@@ -27,7 +14,6 @@ def _has_text(pdf_path: str, sample_pages: int = 3, min_chars: int = 50) -> bool
 
 
 def _convert_text_pdf(pdf_path: str, output_path: str):
-    """Fast path: use PyMuPDF to extract text with bold/italic/headings."""
     import fitz
     from src.text_pdf_engine import TextPDFEngine
     from src.docx_builder import DocxBuilder
@@ -58,7 +44,6 @@ def _convert_text_pdf(pdf_path: str, output_path: str):
 
 
 def _convert_scanned_pdf(pdf_path: str, output_path: str, lang: str, dpi: int):
-    """OCR path: render pages to images, then run EasyOCR."""
     from src.pdf_processor import pdf_to_images
     from src.ocr_engine import LayoutOCR
     from src.docx_builder import DocxBuilder
@@ -91,7 +76,7 @@ def _convert_scanned_pdf(pdf_path: str, output_path: str, lang: str, dpi: int):
 
 def convert(pdf_path: str, output_path: str, lang: str, dpi: int):
     if _has_text(pdf_path):
-        print("[Auto-detect] Text-based PDF → using direct extraction (preserves formatting)")
+        print("[Auto-detect] Text-based PDF → using direct extraction")
         _convert_text_pdf(pdf_path, output_path)
     else:
         print("[Auto-detect] Scanned PDF → using EasyOCR")
@@ -99,26 +84,14 @@ def convert(pdf_path: str, output_path: str, lang: str, dpi: int):
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Convert PDF to editable Word (.docx)"
-    )
+    parser = argparse.ArgumentParser(description="Convert PDF to editable Word (.docx)")
     parser.add_argument("input", help="Path to input PDF file")
-    parser.add_argument(
-        "-o", "--output",
-        default=None,
-        help="Output .docx path (default: same name as input)",
-    )
-    parser.add_argument(
-        "--lang",
-        default="vi",
-        help="OCR language (for scanned PDFs): vi, en, ch. Default: vi",
-    )
-    parser.add_argument(
-        "--dpi",
-        type=int,
-        default=300,
-        help="DPI for scanned PDF rendering. Default: 300",
-    )
+    parser.add_argument("-o", "--output", default=None,
+                        help="Output .docx path (default: same name as input)")
+    parser.add_argument("--lang", default="vi",
+                        help="OCR language for scanned PDFs: vi, en, ch. Default: vi")
+    parser.add_argument("--dpi", type=int, default=300,
+                        help="DPI for scanned PDF rendering. Default: 300")
     args = parser.parse_args()
 
     pdf_path = Path(args.input)
@@ -126,12 +99,11 @@ def main():
         print(f"Error: file not found: {pdf_path}", file=sys.stderr)
         sys.exit(1)
     if pdf_path.suffix.lower() != ".pdf":
-        print(f"Error: input must be a .pdf file", file=sys.stderr)
+        print("Error: input must be a .pdf file", file=sys.stderr)
         sys.exit(1)
 
     output_path = args.output or str(pdf_path.with_suffix(".docx"))
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-
     convert(str(pdf_path), output_path, lang=args.lang, dpi=args.dpi)
 
 

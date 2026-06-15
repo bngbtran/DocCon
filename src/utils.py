@@ -6,8 +6,6 @@ from PIL import Image
 
 
 class _HTMLTableParser(HTMLParser):
-    """Minimal HTML table → 2-D list of strings."""
-
     def __init__(self):
         super().__init__()
         self.rows: List[List[str]] = []
@@ -36,20 +34,17 @@ class _HTMLTableParser(HTMLParser):
 
 
 def html_to_table(html: str) -> List[List[str]]:
-    """Parse an HTML table string into a 2-D list of cell strings."""
     parser = _HTMLTableParser()
     parser.feed(html)
     return parser.rows
 
 
 def pil_to_bytes(image: Image.Image, fmt: str = "PNG") -> bytes:
-    """Encode a PIL image to bytes."""
     buf = io.BytesIO()
     image.save(buf, format=fmt)
     return buf.getvalue()
 
 
 def crop_image(image: Image.Image, bbox: List[float]) -> Image.Image:
-    """Crop a PIL image by [x1, y1, x2, y2] bbox."""
     x1, y1, x2, y2 = (int(v) for v in bbox)
     return image.crop((x1, y1, x2, y2))
