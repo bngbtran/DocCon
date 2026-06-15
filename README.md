@@ -3,8 +3,7 @@ title: DocCon
 emoji: 📄
 colorFrom: red
 colorTo: red
-sdk: gradio
-app_file: app.py
+sdk: docker
 pinned: false
 ---
 
