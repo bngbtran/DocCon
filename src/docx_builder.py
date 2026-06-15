@@ -226,16 +226,22 @@ class DocxBuilder:
         label = block.get("block_label", "text").lower()
         content = block.get("block_content", "").strip()
         bbox = block.get("block_bbox", [])
+        alignment = block.get("block_alignment", "left")
+        is_bold = block.get("block_bold", False)
 
         if label in _HEADING_LABELS:
             if content:
-                self.doc.add_heading(content, level=_HEADING_LABELS[label])
+                p = self.doc.add_heading(content, level=_HEADING_LABELS[label])
+                p.alignment = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.CENTER)
+        elif label == "section_title":
+            if content:
+                self._plain_para(content, alignment, is_bold)
         elif label == "table":
             rows = html_to_table(content)
             if rows:
                 self._plain_table(rows)
             elif content:
-                self._plain_para(content)
+                self._plain_para(content, alignment, is_bold)
         elif label in _FIGURE_LABELS:
             if bbox and page_image:
                 try:
@@ -250,11 +256,14 @@ class DocxBuilder:
                 self._plain_formula(content)
         else:
             if content:
-                self._plain_para(content)
+                self._plain_para(content, alignment, is_bold)
 
-    def _plain_para(self, text: str):
-        para = self.doc.add_paragraph(text)
+    def _plain_para(self, text: str, alignment: str = "left", bold: bool = False):
+        para = self.doc.add_paragraph()
         para.style = self.doc.styles["Normal"]
+        para.paragraph_format.alignment = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
+        run = para.add_run(text)
+        run.bold = bold
 
     def _plain_bullet(self, text: str):
         para = self.doc.add_paragraph(style="List Bullet")
