@@ -61,13 +61,11 @@ async def convert_endpoint(
     return Response(
         content=docx_bytes,
         media_type=(
-            "application/vnd.openxmlformats-officedocument"
-            ".wordprocessingml.document"
+            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
         ),
         headers={
             "Content-Disposition": (
-                f'attachment; filename="{out_name}"; '
-                f"filename*=UTF-8''{encoded}"
+                f"attachment; filename=\"{out_name}\"; filename*=UTF-8''{encoded}"
             )
         },
     )

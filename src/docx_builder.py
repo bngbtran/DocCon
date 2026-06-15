@@ -10,17 +10,28 @@ from PIL import Image
 
 from .utils import crop_image, html_to_table, pil_to_bytes
 
-_TEXT_LABELS    = {"text", "other_text", "paragraph", "list", "footer",
-                   "header", "caption"}
-_HEADING_LABELS = {"title": 1, "section_title": 1, "paragraph_title": 2,
-                   "sub_paragraph_title": 3}
-_FIGURE_LABELS  = {"figure", "image"}
+_TEXT_LABELS = {
+    "text",
+    "other_text",
+    "paragraph",
+    "list",
+    "footer",
+    "header",
+    "caption",
+}
+_HEADING_LABELS = {
+    "title": 1,
+    "section_title": 1,
+    "paragraph_title": 2,
+    "sub_paragraph_title": 3,
+}
+_FIGURE_LABELS = {"figure", "image"}
 
 _ALIGN_MAP = {
-    "center":  WD_ALIGN_PARAGRAPH.CENTER,
+    "center": WD_ALIGN_PARAGRAPH.CENTER,
     "justify": WD_ALIGN_PARAGRAPH.JUSTIFY,
-    "right":   WD_ALIGN_PARAGRAPH.RIGHT,
-    "left":    WD_ALIGN_PARAGRAPH.LEFT,
+    "right": WD_ALIGN_PARAGRAPH.RIGHT,
+    "left": WD_ALIGN_PARAGRAPH.LEFT,
 }
 
 
@@ -37,13 +48,16 @@ class DocxBuilder:
             return
         self._page_info = page_info
         sec = self.doc.sections[0]
-        def _emu(pt): return int(pt * 12700)
-        sec.left_margin   = _emu(page_info.get("left_margin_pt",   89.9))
-        sec.right_margin  = _emu(page_info.get("right_margin_pt",  89.1))
-        sec.top_margin    = _emu(page_info.get("top_margin_pt",     72.0))
-        sec.bottom_margin = _emu(page_info.get("bottom_margin_pt",  72.0))
-        sec.page_width    = _emu(page_info.get("page_width_pt",    595.0))
-        sec.page_height   = _emu(page_info.get("page_height_pt",   842.0))
+
+        def _emu(pt):
+            return int(pt * 12700)
+
+        sec.left_margin = _emu(page_info.get("left_margin_pt", 89.9))
+        sec.right_margin = _emu(page_info.get("right_margin_pt", 89.1))
+        sec.top_margin = _emu(page_info.get("top_margin_pt", 72.0))
+        sec.bottom_margin = _emu(page_info.get("bottom_margin_pt", 72.0))
+        sec.page_width = _emu(page_info.get("page_width_pt", 595.0))
+        sec.page_height = _emu(page_info.get("page_height_pt", 842.0))
         self._margins_set = True
 
     def add_page_break(self):
@@ -65,23 +79,23 @@ class DocxBuilder:
         self.doc.save(output_path)
 
     def _render_rich(self, block: dict, para=None):
-        spans          = block.get("block_spans", [])
-        alignment      = block.get("alignment", "left")
-        has_bullet     = block.get("has_bullet", False)
-        indent_left    = block.get("indent_left_pt", 0.0)
+        spans = block.get("block_spans", [])
+        alignment = block.get("alignment", "left")
+        has_bullet = block.get("has_bullet", False)
+        indent_left = block.get("indent_left_pt", 0.0)
         indent_hanging = block.get("indent_hanging_pt", 0.0)
-        indent_first   = block.get("indent_first_line_pt", 0.0)
-        space_after    = block.get("space_after_pt", 14.0)
+        indent_first = block.get("indent_first_line_pt", 0.0)
+        space_after = block.get("space_after_pt", 14.0)
 
         if para is None:
             para = self.doc.add_paragraph()
         pf = para.paragraph_format
-        pf.alignment    = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
+        pf.alignment = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
         pf.space_before = Pt(0)
-        pf.space_after  = Pt(space_after)
+        pf.space_after = Pt(space_after)
 
         if has_bullet:
-            pf.left_indent       = Pt(indent_left)
+            pf.left_indent = Pt(indent_left)
             pf.first_line_indent = Pt(-indent_hanging)
             self._set_tab_stop(para, indent_left)
             body_font = spans[0]["font"] if spans else "Times New Roman"
@@ -100,10 +114,10 @@ class DocxBuilder:
         if n == 0:
             return
 
-        page_w  = item.get("page_width_pt", 595.0)
-        left_m  = item.get("left_margin_pt", 72.0)
+        page_w = item.get("page_width_pt", 595.0)
+        left_m = item.get("left_margin_pt", 72.0)
         right_m = item.get("right_margin_pt", 72.0)
-        left_edge  = left_m
+        left_edge = left_m
         right_edge = page_w - right_m
 
         cell_x1s = [min(b["block_bbox"][0] for b in cell) for cell in cells_data]
@@ -123,7 +137,7 @@ class DocxBuilder:
         table.style = "Table Grid"
 
         table_w_twips = int((actual_right - left_edge) * 20)
-        tbl   = table._tbl
+        tbl = table._tbl
         tblPr = _get_or_add(tbl, "w:tblPr")
         _set_child(tblPr, "w:tblW", {"w:w": str(table_w_twips), "w:type": "dxa"})
         _set_child(tblPr, "w:tblLayout", {"w:type": "fixed"})
@@ -131,8 +145,8 @@ class DocxBuilder:
 
         for ci, cell_blocks in enumerate(cells_data):
             col_w_twips = int(col_w_pts[ci] * 20)
-            word_cell   = table.cell(0, ci)
-            tc   = word_cell._tc
+            word_cell = table.cell(0, ci)
+            tc = word_cell._tc
             tcPr = _get_or_add(tc, "w:tcPr")
 
             _set_child(tcPr, "w:tcW", {"w:w": str(col_w_twips), "w:type": "dxa"})
@@ -154,34 +168,34 @@ class DocxBuilder:
                 self._render_rich_in(b, word_cell)
 
     def _render_rich_in(self, block: dict, cell):
-        alignment      = block.get("alignment", "left")
-        has_bullet     = block.get("has_bullet", False)
-        indent_left    = block.get("indent_left_pt", 0.0)
+        alignment = block.get("alignment", "left")
+        has_bullet = block.get("has_bullet", False)
+        indent_left = block.get("indent_left_pt", 0.0)
         indent_hanging = block.get("indent_hanging_pt", 0.0)
-        indent_first   = block.get("indent_first_line_pt", 0.0)
-        space_after    = block.get("space_after_pt", 4.0)
-        block_lines    = block.get("block_lines") or []
+        indent_first = block.get("indent_first_line_pt", 0.0)
+        space_after = block.get("space_after_pt", 4.0)
+        block_lines = block.get("block_lines") or []
         wd_align = _ALIGN_MAP.get(alignment, WD_ALIGN_PARAGRAPH.LEFT)
 
         if len(block_lines) > 1:
             for li, line_spans in enumerate(block_lines):
-                is_last = (li == len(block_lines) - 1)
+                is_last = li == len(block_lines) - 1
                 para = cell.add_paragraph()
-                pf   = para.paragraph_format
-                pf.alignment    = wd_align
+                pf = para.paragraph_format
+                pf.alignment = wd_align
                 pf.space_before = Pt(0)
-                pf.space_after  = Pt(space_after if is_last else 2.0)
+                pf.space_after = Pt(space_after if is_last else 2.0)
                 _apply_spans(para, line_spans)
         else:
             spans = block.get("block_spans", [])
             para = cell.add_paragraph()
-            pf   = para.paragraph_format
-            pf.alignment    = wd_align
+            pf = para.paragraph_format
+            pf.alignment = wd_align
             pf.space_before = Pt(0)
-            pf.space_after  = Pt(space_after)
+            pf.space_after = Pt(space_after)
 
             if has_bullet:
-                pf.left_indent       = Pt(indent_left)
+                pf.left_indent = Pt(indent_left)
                 pf.first_line_indent = Pt(-indent_hanging)
                 self._set_tab_stop(para, indent_left)
                 body_font = spans[0]["font"] if spans else "Times New Roman"
@@ -197,21 +211,21 @@ class DocxBuilder:
     def _render_hline(self, item: dict):
         para = self.doc.add_paragraph()
         para.paragraph_format.space_before = Pt(0)
-        para.paragraph_format.space_after  = Pt(0)
-        pPr    = para._p.get_or_add_pPr()
-        pBdr   = OxmlElement("w:pBdr")
+        para.paragraph_format.space_after = Pt(0)
+        pPr = para._p.get_or_add_pPr()
+        pBdr = OxmlElement("w:pBdr")
         bottom = OxmlElement("w:bottom")
-        bottom.set(qn("w:val"),   "single")
-        bottom.set(qn("w:sz"),    "6")
+        bottom.set(qn("w:val"), "single")
+        bottom.set(qn("w:sz"), "6")
         bottom.set(qn("w:space"), "1")
         bottom.set(qn("w:color"), "000000")
         pBdr.append(bottom)
         pPr.append(pBdr)
 
     def _render_plain(self, block: dict, page_image: Optional[Image.Image]):
-        label   = block.get("block_label", "text").lower()
+        label = block.get("block_label", "text").lower()
         content = block.get("block_content", "").strip()
-        bbox    = block.get("block_bbox", [])
+        bbox = block.get("block_bbox", [])
 
         if label in _HEADING_LABELS:
             if content:
@@ -248,7 +262,7 @@ class DocxBuilder:
 
     def _plain_formula(self, text: str):
         para = self.doc.add_paragraph()
-        run  = para.add_run(text)
+        run = para.add_run(text)
         run.font.name = "Courier New"
         run.font.size = Pt(11)
 
@@ -276,9 +290,9 @@ class DocxBuilder:
 
     @staticmethod
     def _set_tab_stop(para, pos_pt: float):
-        pPr  = para._p.get_or_add_pPr()
+        pPr = para._p.get_or_add_pPr()
         tabs = OxmlElement("w:tabs")
-        tab  = OxmlElement("w:tab")
+        tab = OxmlElement("w:tab")
         tab.set(qn("w:val"), "left")
         tab.set(qn("w:pos"), str(int(pos_pt * 20)))
         tabs.append(tab)
@@ -288,14 +302,14 @@ class DocxBuilder:
 def _apply_spans(para, spans: List[dict]):
     for span in spans:
         run = para.add_run(span["text"])
-        run.font.name   = span.get("font", "Times New Roman")
-        run.font.size   = Pt(span["size"])
-        run.bold        = span.get("bold",   False)
-        run.italic      = span.get("italic", False)
+        run.font.name = span.get("font", "Times New Roman")
+        run.font.size = Pt(span["size"])
+        run.bold = span.get("bold", False)
+        run.italic = span.get("italic", False)
         color = span.get("color", 0)
         if color:
             r = (color >> 16) & 0xFF
-            g = (color >> 8)  & 0xFF
+            g = (color >> 8) & 0xFF
             b = color & 0xFF
             if (r, g, b) != (0, 0, 0):
                 run.font.color.rgb = RGBColor(r, g, b)
@@ -306,9 +320,9 @@ def _cell_alignment(block: dict, cell_x1: float, cell_x2: float) -> str:
     if len(bbox) < 4:
         return block.get("alignment", "left")
     bx1, bx2 = bbox[0], bbox[2]
-    bcx     = (bx1 + bx2) / 2.0
+    bcx = (bx1 + bx2) / 2.0
     cell_cx = (cell_x1 + cell_x2) / 2.0
-    cell_w  = max(1.0, cell_x2 - cell_x1)
+    cell_w = max(1.0, cell_x2 - cell_x1)
 
     if abs(bcx - cell_cx) / cell_w < 0.10:
         return "center"
@@ -346,8 +360,8 @@ def _clear_borders(tblPr):
     tblBdr = OxmlElement("w:tblBorders")
     for side in ("top", "left", "bottom", "right", "insideH", "insideV"):
         el = OxmlElement(f"w:{side}")
-        el.set(qn("w:val"),   "none")
-        el.set(qn("w:sz"),    "0")
+        el.set(qn("w:val"), "none")
+        el.set(qn("w:sz"), "0")
         el.set(qn("w:space"), "0")
         el.set(qn("w:color"), "auto")
         tblBdr.append(el)

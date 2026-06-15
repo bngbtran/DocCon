@@ -6,6 +6,7 @@ from pathlib import Path
 
 def _has_text(pdf_path: str, sample_pages: int = 3, min_chars: int = 50) -> bool:
     import fitz
+
     doc = fitz.open(pdf_path)
     total = 0
     for i in range(min(sample_pages, len(doc))):
@@ -86,12 +87,23 @@ def convert(pdf_path: str, output_path: str, lang: str, dpi: int):
 def main():
     parser = argparse.ArgumentParser(description="Convert PDF to editable Word (.docx)")
     parser.add_argument("input", help="Path to input PDF file")
-    parser.add_argument("-o", "--output", default=None,
-                        help="Output .docx path (default: same name as input)")
-    parser.add_argument("--lang", default="vi",
-                        help="OCR language for scanned PDFs: vi, en, ch. Default: vi")
-    parser.add_argument("--dpi", type=int, default=300,
-                        help="DPI for scanned PDF rendering. Default: 300")
+    parser.add_argument(
+        "-o",
+        "--output",
+        default=None,
+        help="Output .docx path (default: same name as input)",
+    )
+    parser.add_argument(
+        "--lang",
+        default="vi",
+        help="OCR language for scanned PDFs: vi, en, ch. Default: vi",
+    )
+    parser.add_argument(
+        "--dpi",
+        type=int,
+        default=300,
+        help="DPI for scanned PDF rendering. Default: 300",
+    )
     args = parser.parse_args()
 
     pdf_path = Path(args.input)

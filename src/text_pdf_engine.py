@@ -3,18 +3,18 @@ import numpy as np
 
 _FONT_MAP = {
     "timesnewroman": "Times New Roman",
-    "times":         "Times New Roman",
-    "arial":         "Arial",
-    "helvetica":     "Arial",
-    "symbol":        "Symbol",
-    "courier":       "Courier New",
-    "cour":          "Courier New",
-    "calibri":       "Calibri",
-    "cambria":       "Cambria",
-    "verdana":       "Verdana",
-    "georgia":       "Georgia",
-    "tahoma":        "Tahoma",
-    "wingdings":     "Wingdings",
+    "times": "Times New Roman",
+    "arial": "Arial",
+    "helvetica": "Arial",
+    "symbol": "Symbol",
+    "courier": "Courier New",
+    "cour": "Courier New",
+    "calibri": "Calibri",
+    "cambria": "Cambria",
+    "verdana": "Verdana",
+    "georgia": "Georgia",
+    "tahoma": "Tahoma",
+    "wingdings": "Wingdings",
 }
 
 
@@ -23,10 +23,15 @@ def _word_font(pdf_name: str) -> str:
     for pat, wname in _FONT_MAP.items():
         if pat in key:
             return wname
-    cleaned = (pdf_name
-               .replace("-BoldMT", "").replace("-BoldItalicMT", "")
-               .replace("-ItalicMT", "").replace("MT", "")
-               .replace("PS", "").replace("-", " ").strip())
+    cleaned = (
+        pdf_name.replace("-BoldMT", "")
+        .replace("-BoldItalicMT", "")
+        .replace("-ItalicMT", "")
+        .replace("MT", "")
+        .replace("PS", "")
+        .replace("-", " ")
+        .strip()
+    )
     return cleaned or pdf_name
 
 
@@ -43,9 +48,11 @@ class TextPDFEngine:
         text_w = right_edge - left_m
         body_size = self._body_size(raw_blocks)
 
-        gaps = [b2["bbox"][1] - b1["bbox"][3]
-                for b1, b2 in zip(raw_blocks, raw_blocks[1:])
-                if b2["bbox"][1] - b1["bbox"][3] > 0]
+        gaps = [
+            b2["bbox"][1] - b1["bbox"][3]
+            for b1, b2 in zip(raw_blocks, raw_blocks[1:])
+            if b2["bbox"][1] - b1["bbox"][3] > 0
+        ]
         space_after = float(np.median(gaps)) if gaps else 14.0
 
         blocks: List[dict] = []
@@ -65,13 +72,15 @@ class TextPDFEngine:
                     bb["item_type"] = "paragraph"
                     items.append(bb)
             else:
-                items.append({
-                    "item_type":       "columns",
-                    "cells":           cells,
-                    "page_width_pt":   pw,
-                    "left_margin_pt":  left_m,
-                    "right_margin_pt": pw - right_edge,
-                })
+                items.append(
+                    {
+                        "item_type": "columns",
+                        "cells": cells,
+                        "page_width_pt": pw,
+                        "left_margin_pt": left_m,
+                        "right_margin_pt": pw - right_edge,
+                    }
+                )
 
         hlines = self._get_hlines(page)
         items = _merge_by_y(items, hlines)
@@ -81,16 +90,18 @@ class TextPDFEngine:
         bot_m = top_m if actual_bot > ph * 0.3 else actual_bot
 
         page_info: dict = {
-            "page_width_pt":    pw,
-            "page_height_pt":   ph,
-            "left_margin_pt":   left_m,
-            "right_margin_pt":  pw - right_edge,
-            "top_margin_pt":    top_m,
+            "page_width_pt": pw,
+            "page_height_pt": ph,
+            "left_margin_pt": left_m,
+            "right_margin_pt": pw - right_edge,
+            "top_margin_pt": top_m,
             "bottom_margin_pt": bot_m,
         }
         return items, page_info
 
-    def _process_block(self, raw, pw, left_m, text_w, body_size, space_after) -> Optional[dict]:
+    def _process_block(
+        self, raw, pw, left_m, text_w, body_size, space_after
+    ) -> Optional[dict]:
         spans_out, has_bullet, content_x = self._flatten(raw, left_m)
         if not spans_out:
             return None
@@ -105,14 +116,18 @@ class TextPDFEngine:
         bx1, bx2 = bbox[0], bbox[2]
         bcx = (bx1 + bx2) / 2
         block_w = bx2 - bx1
-        is_narrow_centered = (abs(bcx - pw / 2) < pw * 0.06 and block_w < text_w * 0.6)
+        is_narrow_centered = abs(bcx - pw / 2) < pw * 0.06 and block_w < text_w * 0.6
 
         non_last = raw["lines"][:-1]
-        has_full_lines = any(
-            max((s["bbox"][2] for s in ln["spans"] if s["text"].strip()), default=0)
-            > left_m + text_w - 4
-            for ln in non_last
-        ) if non_last else False
+        has_full_lines = (
+            any(
+                max((s["bbox"][2] for s in ln["spans"] if s["text"].strip()), default=0)
+                > left_m + text_w - 4
+                for ln in non_last
+            )
+            if non_last
+            else False
+        )
 
         if is_narrow_centered:
             alignment = "center"
@@ -123,6 +138,7 @@ class TextPDFEngine:
 
         indent_first_line = 0.0
         if not has_bullet and len(raw["lines"]) >= 2:
+
             def _min_x(spans):
                 xs = [s["bbox"][0] for s in spans if s["text"].strip()]
                 return min(xs) if xs else None
@@ -147,17 +163,17 @@ class TextPDFEngine:
         indent_hanging = indent_left
 
         return {
-            "block_label":          label,
-            "block_bbox":           bbox,
-            "block_content":        full_text,
-            "block_spans":          spans_out,
-            "block_lines":          self._flatten_lines(raw, left_m),
-            "has_bullet":           has_bullet,
-            "alignment":            alignment,
-            "indent_left_pt":       indent_left,
-            "indent_hanging_pt":    indent_hanging,
+            "block_label": label,
+            "block_bbox": bbox,
+            "block_content": full_text,
+            "block_spans": spans_out,
+            "block_lines": self._flatten_lines(raw, left_m),
+            "has_bullet": has_bullet,
+            "alignment": alignment,
+            "indent_left_pt": indent_left,
+            "indent_hanging_pt": indent_hanging,
             "indent_first_line_pt": indent_first_line,
-            "space_after_pt":       space_after,
+            "space_after_pt": space_after,
         }
 
     def _group_rows(self, blocks: List[dict]) -> List[List[dict]]:
@@ -234,14 +250,16 @@ class TextPDFEngine:
                 skip_next_space = False
                 if has_bullet and content_x == left_m + 18.0 and t.strip():
                     content_x = s["bbox"][0]
-                line_spans.append({
-                    "text":   t,
-                    "font":   _word_font(s["font"]),
-                    "bold":   bool(s["flags"] & (1 << 4)),
-                    "italic": bool(s["flags"] & (1 << 1)),
-                    "size":   s["size"],
-                    "color":  s["color"],
-                })
+                line_spans.append(
+                    {
+                        "text": t,
+                        "font": _word_font(s["font"]),
+                        "bold": bool(s["flags"] & (1 << 4)),
+                        "italic": bool(s["flags"] & (1 << 1)),
+                        "size": s["size"],
+                        "color": s["color"],
+                    }
+                )
             if not line_spans:
                 continue
             if all_spans:
@@ -253,12 +271,14 @@ class TextPDFEngine:
 
         merged: List[dict] = []
         for s in all_spans:
-            if (merged
-                    and merged[-1]["bold"]   == s["bold"]
-                    and merged[-1]["italic"] == s["italic"]
-                    and merged[-1]["size"]   == s["size"]
-                    and merged[-1]["font"]   == s["font"]
-                    and merged[-1]["color"]  == s["color"]):
+            if (
+                merged
+                and merged[-1]["bold"] == s["bold"]
+                and merged[-1]["italic"] == s["italic"]
+                and merged[-1]["size"] == s["size"]
+                and merged[-1]["font"] == s["font"]
+                and merged[-1]["color"] == s["color"]
+            ):
                 merged[-1] = {**merged[-1], "text": merged[-1]["text"] + s["text"]}
             else:
                 merged.append(dict(s))
@@ -279,24 +299,28 @@ class TextPDFEngine:
                     skip_next = False
                     continue
                 skip_next = False
-                line_spans.append({
-                    "text":   t,
-                    "font":   _word_font(s["font"]),
-                    "bold":   bool(s["flags"] & (1 << 4)),
-                    "italic": bool(s["flags"] & (1 << 1)),
-                    "size":   s["size"],
-                    "color":  s["color"],
-                })
+                line_spans.append(
+                    {
+                        "text": t,
+                        "font": _word_font(s["font"]),
+                        "bold": bool(s["flags"] & (1 << 4)),
+                        "italic": bool(s["flags"] & (1 << 1)),
+                        "size": s["size"],
+                        "color": s["color"],
+                    }
+                )
             if not line_spans:
                 continue
             merged: List[dict] = []
             for sp in line_spans:
-                if (merged
-                        and merged[-1]["bold"]   == sp["bold"]
-                        and merged[-1]["italic"] == sp["italic"]
-                        and merged[-1]["size"]   == sp["size"]
-                        and merged[-1]["font"]   == sp["font"]
-                        and merged[-1]["color"]  == sp["color"]):
+                if (
+                    merged
+                    and merged[-1]["bold"] == sp["bold"]
+                    and merged[-1]["italic"] == sp["italic"]
+                    and merged[-1]["size"] == sp["size"]
+                    and merged[-1]["font"] == sp["font"]
+                    and merged[-1]["color"] == sp["color"]
+                ):
                     merged[-1] = {**merged[-1], "text": merged[-1]["text"] + sp["text"]}
                 else:
                     merged.append(dict(sp))
@@ -315,13 +339,15 @@ class TextPDFEngine:
                 h = abs(rect[3] - rect[1])
                 w = abs(rect[2] - rect[0])
                 if h < 3 and w > pw * 0.08:
-                    hlines.append({
-                        "item_type":    "hline",
-                        "y":            (rect[1] + rect[3]) / 2,
-                        "x1":           rect[0],
-                        "x2":           rect[2],
-                        "thickness_pt": max(0.5, h),
-                    })
+                    hlines.append(
+                        {
+                            "item_type": "hline",
+                            "y": (rect[1] + rect[3]) / 2,
+                            "x1": rect[0],
+                            "x2": rect[2],
+                            "thickness_pt": max(0.5, h),
+                        }
+                    )
         except Exception:
             pass
         return sorted(hlines, key=lambda l: l["y"])
@@ -351,9 +377,12 @@ class TextPDFEngine:
 
 def _empty_page_info(pw, ph) -> dict:
     return {
-        "page_width_pt": pw, "page_height_pt": ph,
-        "left_margin_pt": 72, "right_margin_pt": 72,
-        "top_margin_pt": 72,  "bottom_margin_pt": 72,
+        "page_width_pt": pw,
+        "page_height_pt": ph,
+        "left_margin_pt": 72,
+        "right_margin_pt": 72,
+        "top_margin_pt": 72,
+        "bottom_margin_pt": 72,
     }
 
 

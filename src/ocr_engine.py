@@ -19,6 +19,7 @@ _LANG_MAP = {
 class LayoutOCR:
     def __init__(self, lang: str = "vi", **_):
         import easyocr
+
         langs = _LANG_MAP.get(lang, ["en"])
         self.reader = easyocr.Reader(langs, gpu=False, verbose=False)
 
@@ -39,12 +40,17 @@ class LayoutOCR:
             pts = np.array(bbox, dtype=float)
             x1, y1 = int(pts[:, 0].min()), int(pts[:, 1].min())
             x2, y2 = int(pts[:, 0].max()), int(pts[:, 1].max())
-            items.append({
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "yc": (y1 + y2) / 2,
-                "h": max(1, y2 - y1),
-                "text": text.strip(),
-            })
+            items.append(
+                {
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x2,
+                    "y2": y2,
+                    "yc": (y1 + y2) / 2,
+                    "h": max(1, y2 - y1),
+                    "text": text.strip(),
+                }
+            )
 
         if not items:
             return []
@@ -69,11 +75,17 @@ class LayoutOCR:
             x2 = max(i["x2"] for i in row)
             y2 = max(i["y2"] for i in row)
             text = " ".join(i["text"] for i in row)
-            lines.append({
-                "x1": x1, "y1": y1, "x2": x2, "y2": y2,
-                "h": y2 - y1, "cx": (x1 + x2) / 2,
-                "text": text.strip(),
-            })
+            lines.append(
+                {
+                    "x1": x1,
+                    "y1": y1,
+                    "x2": x2,
+                    "y2": y2,
+                    "h": y2 - y1,
+                    "cx": (x1 + x2) / 2,
+                    "text": text.strip(),
+                }
+            )
 
         PARA_GAP = max(20, avg_h * 0.4)
         para_groups: List[List[dict]] = []
@@ -105,8 +117,9 @@ class LayoutOCR:
             first_x1 = para[0]["x1"]
             para_cx = (x1 + x2) / 2
             para_w = x2 - x1
-            is_centered = (abs(para_cx - page_cx) < img_w * 0.08
-                           and para_w < img_w * 0.45)
+            is_centered = (
+                abs(para_cx - page_cx) < img_w * 0.08 and para_w < img_w * 0.45
+            )
 
             if is_centered and len(para) <= 2 and len(text) <= 120:
                 label = "title"
@@ -115,10 +128,12 @@ class LayoutOCR:
             else:
                 label = "text"
 
-            blocks.append({
-                "block_label": label,
-                "block_bbox": [x1, y1, x2, y2],
-                "block_content": text,
-            })
+            blocks.append(
+                {
+                    "block_label": label,
+                    "block_bbox": [x1, y1, x2, y2],
+                    "block_content": text,
+                }
+            )
 
         return blocks
