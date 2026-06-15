@@ -6,7 +6,6 @@ from pathlib import Path
 from urllib.parse import quote
 
 import gradio as gr
-import uvicorn
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
@@ -83,7 +82,3 @@ def _sync_convert(in_path: str, out_path: str, lang: str, dpi: int) -> None:
 
 # ── Mount Gradio at root, export combined ASGI app ────────────────────────────
 app = gr.mount_gradio_app(_api, demo, path="/")
-
-if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 7860))
-    uvicorn.run(app, host="0.0.0.0", port=port)
