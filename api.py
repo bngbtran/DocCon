@@ -1,6 +1,7 @@
 import asyncio
 import os
 import tempfile
+import unicodedata
 from pathlib import Path
 from urllib.parse import quote
 
@@ -57,6 +58,9 @@ async def convert_endpoint(
     stem = Path(file.filename).stem
     out_name = f"{stem}.docx"
     encoded = quote(out_name, safe="")
+    # Header values must be latin-1: ASCII fallback here, real name in filename*.
+    plain = unicodedata.normalize("NFKD", out_name.replace("đ", "d").replace("Đ", "D"))
+    plain = plain.encode("ascii", "ignore").decode().replace('"', "") or "output.docx"
 
     return Response(
         content=docx_bytes,
@@ -65,7 +69,7 @@ async def convert_endpoint(
         ),
         headers={
             "Content-Disposition": (
-                f"attachment; filename=\"{out_name}\"; filename*=UTF-8''{encoded}"
+                f"attachment; filename=\"{plain}\"; filename*=UTF-8''{encoded}"
             )
         },
     )

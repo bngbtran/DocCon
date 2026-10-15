@@ -18,11 +18,25 @@ Hỗ trợ cả PDF văn bản thông thường lẫn PDF scan (ảnh chụp).
 
 ## Tính năng
 
-- **PDF văn bản** — trích xuất trực tiếp qua PyMuPDF, giữ nguyên font, cỡ chữ, in đậm, in nghiêng
-- **PDF scan** — OCR tự động bằng EasyOCR (hỗ trợ tiếng Việt và tiếng Anh)
-- **Bố cục 2 cột** — nhận diện và tái tạo đúng cấu trúc đa cột (tài liệu hành chính, văn bản nhà nước)
-- **Đường kẻ ngang** — phát hiện và chèn đường kẻ phân cách tương ứng trong Word
-- **Thụt lề & căn lề** — giữ nguyên căn trái/phải/giữa và thụt đầu dòng
+Mỗi trang PDF được phân loại và xử lý riêng, nên PDF hỗn hợp (văn bản + scan) cũng được hỗ trợ:
+
+| Loại trang | Cách xử lý |
+|-----------|------------|
+| **PDF văn bản** | Đọc trực tiếp từng ký tự qua PyMuPDF: giữ font gốc, cỡ chữ, đậm/nghiêng/gạch chân, màu, chỉ số trên |
+| **PDF scan / ảnh chụp** | Tự xoay trang (90°/180°), chống nghiêng, OCR bằng EasyOCR; ước lượng cỡ chữ, đậm, nghiêng, màu chữ từ ảnh |
+| **PDF scan đã OCR sẵn** (có lớp chữ ẩn) | Dùng lớp chữ có sẵn, kiểu chữ lấy từ ảnh |
+| **Text hỏng mã hóa / font TCVN3, VNI** | Render rồi OCR lại để ra Unicode chuẩn |
+
+Giữ bố cục:
+
+- **Khổ giấy từng trang** — mỗi trang PDF là một section Word với đúng kích thước, hướng (dọc/ngang) và lề
+- **Vị trí dọc chính xác** — giãn dòng và khoảng cách đoạn tính từ toạ độ thật, số trang Word khớp PDF
+- **Ngắt dòng như bản gốc** — đo độ rộng tự nhiên của dòng để Word xuống dòng đúng chỗ
+- **Bố cục nhiều cột** — header 2 cột của văn bản hành chính, khối "Nơi nhận / Chữ ký"… dựng bằng bảng không viền
+- **Bảng** — nhận diện bảng có kẻ (cả PDF văn bản lẫn scan), giữ ô gộp, độ rộng cột, chiều cao hàng, màu nền ô
+- **Tab, gạch đầu dòng, mục lục** — tab stop đúng vị trí, dấu chấm dẫn (`........ 12`), thụt lề treo
+- **Hình ảnh, con dấu, chữ ký** — đặt nổi đúng vị trí; con dấu/chữ ký từ bản scan được tách nền trong suốt
+- **Đường kẻ, khung, nền màu** — đường kẻ ngang thành viền đoạn; khung/hình vẽ vector giữ nguyên dạng ảnh
 
 ---
 
@@ -43,11 +57,12 @@ DocCon/
 ├── Dockerfile              # HF Spaces Docker entry point
 ├── requirements.txt
 ├── src/
-│   ├── text_pdf_engine.py  # Phân tích PDF văn bản (PyMuPDF)
-│   ├── ocr_engine.py       # OCR cho PDF scan (EasyOCR)
-│   ├── pdf_processor.py    # Điều phối: chọn engine phù hợp
-│   ├── docx_builder.py     # Tạo file .docx từ kết quả phân tích
-│   └── utils.py
+│   ├── pdf_processor.py    # Phân loại từng trang và điều phối
+│   ├── text_pdf_engine.py  # Trích xuất PDF văn bản (PyMuPDF)
+│   ├── ocr_engine.py       # PDF scan: xoay/chống nghiêng, bảng, OCR, kiểu chữ, con dấu
+│   ├── layout.py           # Dựng bố cục: đoạn, cột, căn lề, thụt lề, tab, khoảng cách
+│   ├── docx_builder.py     # Xuất .docx (section theo trang, bảng, ảnh nổi)
+│   └── fonts.py            # Chuẩn hoá tên font PDF → font Word, sửa lỗi mã hoá tiếng Việt
 └── frontend/
     ├── src/
     │   ├── App.jsx         # Router shell
@@ -67,14 +82,12 @@ DocCon/
 
 - Python 3.10+, Conda
 - Node.js 18+
-- Poppler
 
 ### Backend
 
 ```bash
 conda create -n doccon python=3.10
 conda activate doccon
-conda install -c conda-forge poppler
 pip install -r requirements.txt
 uvicorn api:app --host 0.0.0.0 --port 8000
 ```

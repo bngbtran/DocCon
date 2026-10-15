@@ -1,49 +1,11 @@
 import argparse
 import sys
-import time
 from pathlib import Path
 
 
 def convert(pdf_path: str, output_path: str, lang: str = "vi", dpi: int = 300):
-    import fitz
-    from PIL import Image
-    from src.text_pdf_engine import TextPDFEngine
-    from src.ocr_engine import LayoutOCR
-    from src.docx_builder import DocxBuilder
-
-    doc = fitz.open(pdf_path)
-    total = len(doc)
-    print(f"Opening PDF — {total} page(s)")
-
-    engine = TextPDFEngine()
-    builder = DocxBuilder()
-    ocr: LayoutOCR | None = None
-
-    for i, page in enumerate(doc):
-        t0 = time.time()
-        is_text = len(page.get_text().strip()) >= 50
-
-        if is_text:
-            blocks, page_info = engine.analyze_page(page)
-            builder.set_page_margins(page_info)
-            builder.process_blocks(blocks, None)
-            mode = "text"
-        else:
-            if ocr is None:
-                print(f"  Loading OCR engine (lang={lang})...")
-                ocr = LayoutOCR(lang=lang)
-            pix = page.get_pixmap(dpi=dpi)
-            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
-            blocks = ocr.analyze(img)
-            builder.process_blocks(blocks, img)
-            mode = "ocr"
-
-        print(f"  Page {i+1}/{total} [{mode}] — {len(blocks)} blocks ({time.time()-t0:.1f}s)")
-        if i < total - 1:
-            builder.add_page_break()
-
-    builder.save(output_path)
-    print(f"Saved → {output_path}")
+    from src.pdf_processor import convert as _convert
+    _convert(pdf_path, output_path, lang=lang, dpi=dpi)
 
 
 def main():
